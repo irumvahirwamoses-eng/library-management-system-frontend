@@ -212,7 +212,7 @@ export default function Landing() {
                   <ExternalLink size={14} /> GitHub: irumvahirwa-eng
                 </a>
                 <p className="flex items-center gap-1.5">Phone: 0727477160</p>
-                <a href="https://instagram.com/irumvahirwamoses" target="_blank" className="block hover:text-white transition flex items-center gap-1.5">
+                <a href="https://instagram.com/i.r.u.m.v.a.m.o.s.e.s" target="_blank" className="block hover:text-white transition flex items-center gap-1.5">
                   <ExternalLink size={14} /> Instagram
                 </a>
               </div>
