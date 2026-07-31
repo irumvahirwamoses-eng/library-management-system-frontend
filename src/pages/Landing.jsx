@@ -191,7 +191,7 @@ export default function Landing() {
                 </div>
                 <span className="text-lg font-bold">LMS Platform</span>
               </div>
-              <p className="text-gray-400 text-sm leading-relaxed">A complete school library management solution built for Rwandan schools. SaaS-based, secure, and easy to use.</p>
+              <p className="text-gray-400 text-sm leading-relaxed">A complete school library management solution built for Rwandan schools. SaaS-based, secure, and easy to use.Developed by Moses Irumva Hirwa</p>
             </div>
             <div>
               <h4 className="font-semibold mb-3">Quick Links</h4>
@@ -212,7 +212,7 @@ export default function Landing() {
                   <ExternalLink size={14} /> GitHub: irumvahirwa-eng
                 </a>
                 <p className="flex items-center gap-1.5">Phone: 0727477160</p>
-                <a href="https://instagram.com/irumvahirwa_eng" target="_blank" className="block hover:text-white transition flex items-center gap-1.5">
+                <a href="https://instagram.com/irumvahirwamoses" target="_blank" className="block hover:text-white transition flex items-center gap-1.5">
                   <ExternalLink size={14} /> Instagram
                 </a>
               </div>
