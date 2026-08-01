@@ -3,10 +3,16 @@ import { Plus, Search, CheckCircle, BookOpen, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
+import ExportButtons from '../components/ExportButtons';
+import { exportExcel, printTable } from '../utils/export';
+import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
 
+const EXCEL_COLUMNS = ['Book', 'Borrowed By', 'Type', 'Borrow Date', 'Return Date', 'Status'];
+
 export default function Borrowed() {
+  const { user } = useAuth();
   const [records, setRecords] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -112,10 +118,35 @@ export default function Borrowed() {
           <h1 className="text-2xl font-bold text-gray-900">Borrow / Return</h1>
           <p className="text-gray-500 text-sm mt-1">Track book borrowing and returns</p>
         </div>
-        <button onClick={() => { setShowModal(true); setNesaCode(''); setBorrowStudent(null); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
-          <Plus size={16} /> New Borrow
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButtons
+            disabled={filtered.length === 0}
+            onExcel={() => exportExcel(
+              filtered.map((r) => ({
+                Book: r.book?.title || 'N/A',
+                'Borrowed By': r.student?.studentName || r.teacher?.teacherName || 'N/A',
+                Type: r.student ? 'Student' : 'Teacher',
+                'Borrow Date': r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-',
+                'Return Date': r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-',
+                Status: r.status === 'borrowed' ? 'Borrowed' : 'Returned'
+              })),
+              'Borrowings', 'borrowings')}
+            onPrint={() => printTable('Borrow / Return Records', EXCEL_COLUMNS,
+              filtered.map((r) => ({
+                Book: r.book?.title || 'N/A',
+                'Borrowed By': r.student?.studentName || r.teacher?.teacherName || 'N/A',
+                Type: r.student ? 'Student' : 'Teacher',
+                'Borrow Date': r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-',
+                'Return Date': r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-',
+                Status: r.status === 'borrowed' ? 'Borrowed' : 'Returned'
+              })),
+              user?.school?.name)}
+          />
+          <button onClick={() => { setShowModal(true); setNesaCode(''); setBorrowStudent(null); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
+            <Plus size={16} /> New Borrow
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">

@@ -3,9 +3,13 @@ import { Plus, Search, Edit3, Trash2, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
+import ExportButtons from '../components/ExportButtons';
+import { exportExcel, printTable } from '../utils/export';
 import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
+
+const EXCEL_COLUMNS = ['NESA Code', 'Name', 'Class', 'Phone', 'Level'];
 
 export default function Students() {
   const { user } = useAuth();
@@ -93,10 +97,21 @@ export default function Students() {
           <h1 className="text-2xl font-bold text-gray-900">Students</h1>
           <p className="text-gray-500 text-sm mt-1">Manage registered students</p>
         </div>
-        <button onClick={() => { setEditStudent(null); setForm({ nesaCode: '', studentName: '', class: '', phonenumber: '', level: '' }); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
-          <Plus size={16} /> Add Student
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButtons
+            disabled={filtered.length === 0}
+            onExcel={() => exportExcel(
+              filtered.map((s) => ({ 'NESA Code': s.nesaCode, Name: s.studentName, Class: s.class || '', Phone: s.phonenumber || '', Level: s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '' })),
+              'Students', 'students')}
+            onPrint={() => printTable('Students List', EXCEL_COLUMNS,
+              filtered.map((s) => ({ 'NESA Code': s.nesaCode, Name: s.studentName, Class: s.class || '', Phone: s.phonenumber || '', Level: s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '' })),
+              user?.school?.name)}
+          />
+          <button onClick={() => { setEditStudent(null); setForm({ nesaCode: '', studentName: '', class: '', phonenumber: '', level: '' }); setShowModal(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
+            <Plus size={16} /> Add Student
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">

@@ -3,10 +3,16 @@ import { Plus, Search, Trash2, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
+import ExportButtons from '../components/ExportButtons';
+import { exportExcel, printTable } from '../utils/export';
+import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
 
+const EXCEL_COLUMNS = ['Book', 'Table', 'Allocated Date'];
+
 export default function Allocations() {
+  const { user } = useAuth();
   const [allocations, setAllocations] = useState([]);
   const [books, setBooks] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -82,10 +88,21 @@ export default function Allocations() {
           <h1 className="text-2xl font-bold text-gray-900">Book Allocations</h1>
           <p className="text-gray-500 text-sm mt-1">Assign books to classroom tables</p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
-          <Plus size={16} /> Add Allocation
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButtons
+            disabled={filtered.length === 0}
+            onExcel={() => exportExcel(
+              filtered.map((a) => ({ Book: a.book?.title || 'N/A', Table: a.tableName, 'Allocated Date': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '-' })),
+              'Allocations', 'allocations')}
+            onPrint={() => printTable('Book Allocations', EXCEL_COLUMNS,
+              filtered.map((a) => ({ Book: a.book?.title || 'N/A', Table: a.tableName, 'Allocated Date': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '-' })),
+              user?.school?.name)}
+          />
+          <button onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
+            <Plus size={16} /> Add Allocation
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5">

@@ -3,12 +3,19 @@ import { Plus, Search, Edit3, Trash2, Book, X, UserCheck, Archive } from 'lucide
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
+import ExportButtons from '../components/ExportButtons';
+import { exportExcel, printTable } from '../utils/export';
+import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
 
+const EXCEL_COLUMNS = ['Title', 'Author', 'Category', 'Location', 'ISBN', 'Quantity', 'Available'];
+
 export default function Books() {
+  const { user } = useAuth();
   const [books, setBooks] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [categoryStats, setCategoryStats] = useState([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
@@ -42,8 +49,16 @@ export default function Books() {
     } catch { /* ignore */ }
   };
 
+  const loadCategories = async () => {
+    try {
+      const res = await api.get('/reports/categories');
+      setCategoryStats(res.data);
+    } catch { /* ignore */ }
+  };
+
   useEffect(() => { loadBooks(); }, [search, categoryFilter, locationFilter, availabilityFilter]);
   useEffect(() => { loadLocations(); }, []);
+  useEffect(() => { loadCategories(); }, []);
   useEffect(() => { setPage(1); }, [search, categoryFilter, locationFilter, availabilityFilter]);
 
   const categories = [...new Set(books.map((b) => b.category).filter(Boolean))];
@@ -52,6 +67,10 @@ export default function Books() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const quantity = parseInt(form.quantity) || 0;
+    const available = parseInt(form.available) || 0;
+    if (quantity < 1) { toast.error('Quantity must be at least 1'); return; }
+    if (available > quantity) { toast.error('Available copies cannot be greater than quantity'); return; }
     setLoading(true);
     try {
       if (editBook) {
@@ -139,10 +158,21 @@ export default function Books() {
           <h1 className="text-2xl font-bold text-gray-900">Books</h1>
           <p className="text-gray-500 text-sm mt-1">Manage your school book catalog</p>
         </div>
-        <button onClick={() => { setEditBook(null); setForm({ title: '', author: '', category: '', isbn: '', quantity: 1, available: 1, location: '' }); setShowModal(true); }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
-          <Plus size={16} /> Add Book
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButtons
+            disabled={books.length === 0}
+            onExcel={() => exportExcel(
+              books.map((b) => ({ Title: b.title, Author: b.author || '', Category: b.category || '', Location: b.location || '', ISBN: b.isbn || '', Quantity: b.quantity, Available: b.available })),
+              'Books', 'books')}
+            onPrint={() => printTable('Books List', EXCEL_COLUMNS,
+              books.map((b) => ({ Title: b.title, Author: b.author || '', Category: b.category || '', Location: b.location || '', ISBN: b.isbn || '', Quantity: b.quantity, Available: b.available })),
+              user?.school?.name)}
+          />
+          <button onClick={() => { setEditBook(null); setForm({ title: '', author: '', category: '', isbn: '', quantity: 1, available: 1, location: '' }); setShowModal(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
+            <Plus size={16} /> Add Book
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
@@ -226,6 +256,45 @@ export default function Books() {
         <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
       </div>
 
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm mb-6">
+        <div className="flex items-center justify-between p-5 pb-0">
+          <div>
+            <h2 className="font-semibold text-gray-900">Library Categories</h2>
+            <p className="text-gray-500 text-sm mt-0.5">{categoryStats.length} categories available in the library</p>
+          </div>
+          <ExportButtons
+            disabled={categoryStats.length === 0}
+            onExcel={() => exportExcel(categoryStats.map((c) => ({ Category: c.category, Titles: c.titles, Copies: c.copies })), 'Categories', 'categories')}
+            onPrint={() => printTable('Library Categories', ['Category', 'Titles', 'Copies'],
+              categoryStats.map((c) => ({ Category: c.category, Titles: c.titles, Copies: c.copies })),
+              user?.school?.name)}
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gradient-to-r from-emerald-50 to-teal-50">
+                <th className="text-left p-4 font-semibold text-emerald-700">Category</th>
+                <th className="text-center p-4 font-semibold text-emerald-700">Book Titles</th>
+                <th className="text-center p-4 font-semibold text-emerald-700">Total Copies</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categoryStats.map((c, idx) => (
+                <tr key={c.category} className={`border-b border-gray-50 hover:bg-emerald-50/30 transition ${idx % 2 ? 'bg-emerald-50/20' : 'bg-white'}`}>
+                  <td className="p-4 font-medium text-gray-900 capitalize">{c.category}</td>
+                  <td className="p-4 text-center text-gray-700">{c.titles}</td>
+                  <td className="p-4 text-center text-gray-700">{c.copies}</td>
+                </tr>
+              ))}
+              {categoryStats.length === 0 && (
+                <tr><td colSpan={3} className="p-8 text-center text-gray-400">No categories found</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -258,12 +327,15 @@ export default function Books() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Quantity</label>
-                  <input type="number" min="0" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: parseInt(e.target.value) || 0 })}
+                  <input type="number" min="1" value={form.quantity} onChange={(e) => {
+                    const q = parseInt(e.target.value) || 0;
+                    setForm((f) => ({ ...f, quantity: q, available: f.available > q ? q : f.available }));
+                  }}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Available</label>
-                  <input type="number" min="0" value={form.available} onChange={(e) => setForm({ ...form, available: parseInt(e.target.value) || 0 })}
+                  <input type="number" min="0" max={form.quantity} value={form.available} onChange={(e) => setForm({ ...form, available: parseInt(e.target.value) || 0 })}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
                 </div>
               </div>
