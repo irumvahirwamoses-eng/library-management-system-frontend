@@ -174,8 +174,6 @@ export default function ImportModal({ open, onClose, type, onImported }) {
         const id = String(row.identityNumber || '').replace(/\s/g, '');
         if (!name) {
           invalid.push({ row: idx + 1, data: row, error: 'Teacher name is required' });
-        } else if (!subject) {
-          invalid.push({ row: idx + 1, data: row, error: 'Subject is required' });
         } else if (!id || !/^\d{16}$/.test(id)) {
           invalid.push({ row: idx + 1, data: row, error: 'National ID must be exactly 16 digits' });
         } else {
