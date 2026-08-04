@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Edit3, Trash2, Grid3X3 } from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Grid3X3, Upload } from 'lucide-react';
+import ImportModal from '../components/ImportModal';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
@@ -22,6 +23,7 @@ export default function Teachers() {
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
+  const [showImport, setShowImport] = useState(false);
 
   const load = async () => {
     const res = await api.get('/teachers');
@@ -103,6 +105,10 @@ export default function Teachers() {
               filtered.map((t) => ({ Name: t.teacherName, Subject: t.subject, 'National ID': t.identityNumber, Phone: t.phone || '' })),
               user?.school?.name)}
           />
+          <button onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition shadow-md font-medium text-sm">
+            <Upload size={16} /> Import
+          </button>
           <button onClick={() => { setEditTeacher(null); setForm({ teacherName: '', subject: '', identityNumber: '', phone: '' }); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
             <Plus size={16} /> Add Teacher
@@ -198,6 +204,8 @@ export default function Teachers() {
           </div>
         </div>
       )}
+
+      <ImportModal open={showImport} onClose={() => setShowImport(false)} type="teachers" onImported={load} />
     </div>
   );
 }

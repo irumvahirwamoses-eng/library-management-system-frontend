@@ -35,6 +35,7 @@ export const printTable = (title, columns, rows, schoolName = '') => {
     .print-footer .sig{flex:1;text-align:center}
     .print-footer .sig .space{height:38px}
     .print-footer .sig .line{border-top:1px solid #333;margin:0;padding-top:4px;font-size:11px;font-weight:600;color:#333}
+    .print-dev{position:fixed;bottom:0;left:0;right:0;text-align:center;padding:6px 24px;font-size:11px;color:#888;z-index:10;background:#fff;border-top:1px solid #eee}
     @media print{ .no-print{display:none} }
   </style></head><body>
     <button class="no-print" onclick="window.print()">Print</button>
@@ -53,6 +54,7 @@ export const printTable = (title, columns, rows, schoolName = '') => {
         <div class="sig"><div class="space"></div><p class="line">Librarian Signature</p></div>
       </div>
     </div>
+    <div class="print-dev">Developed by Irumva Hirwa Moses</div>
   </body></html>`);
   win.document.close();
   win.focus();

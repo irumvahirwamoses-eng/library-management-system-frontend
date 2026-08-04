@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Edit3, Trash2, Users } from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Users, Upload } from 'lucide-react';
+import ImportModal from '../components/ImportModal';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
@@ -24,6 +25,7 @@ export default function Students() {
   const [classFilter, setClassFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
   const [phoneFilter, setPhoneFilter] = useState('');
+  const [showImport, setShowImport] = useState(false);
 
   const load = async () => {
     const res = await api.get('/students');
@@ -107,6 +109,10 @@ export default function Students() {
               filtered.map((s) => ({ 'NESA Code': s.nesaCode, Name: s.studentName, Class: s.class || '', Phone: s.phonenumber || '', Level: s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '' })),
               user?.school?.name)}
           />
+          <button onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition shadow-md font-medium text-sm">
+            <Upload size={16} /> Import
+          </button>
           <button onClick={() => { setEditStudent(null); setForm({ nesaCode: '', studentName: '', class: '', phonenumber: '', level: '' }); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
             <Plus size={16} /> Add Student
@@ -224,6 +230,8 @@ export default function Students() {
           </div>
         </div>
       )}
+
+      <ImportModal open={showImport} onClose={() => setShowImport(false)} type="students" onImported={load} />
     </div>
   );
 }
