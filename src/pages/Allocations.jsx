@@ -11,6 +11,9 @@ const PAGE_SIZE = 15;
 
 const EXCEL_COLUMNS = ['Book', 'Table', 'Allocated Date'];
 
+const toTitleCase = (str) => String(str || '').trim().toLowerCase().split(/\s+/).filter(Boolean)
+  .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
 export default function Allocations() {
   const { user } = useAuth();
   const [allocations, setAllocations] = useState([]);
@@ -35,14 +38,14 @@ export default function Allocations() {
 
   useEffect(() => { load(); }, []);
 
-  const tables = [...new Set(allocations.map((a) => a.tableName).filter(Boolean))];
+  const tables = [...new Set(allocations.map((a) => toTitleCase(a.tableName)).filter(Boolean))];
 
   const filtered = allocations.filter((a) => {
     if (search) {
       const q = search.toLowerCase();
       if (!(a.book?.title || '').toLowerCase().includes(q)) return false;
     }
-    if (tableFilter && a.tableName !== tableFilter) return false;
+    if (tableFilter && toTitleCase(a.tableName) !== tableFilter) return false;
     if (dateFilter) {
       const dateStr = new Date(a.createdAt).toLocaleDateString();
       if (!dateStr.toLowerCase().includes(dateFilter.toLowerCase())) return false;
@@ -92,10 +95,10 @@ export default function Allocations() {
           <ExportButtons
             disabled={filtered.length === 0}
             onExcel={() => exportExcel(
-              filtered.map((a) => ({ Book: a.book?.title || 'N/A', Table: a.tableName, 'Allocated Date': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '-' })),
+              filtered.map((a) => ({ Book: a.book?.title || 'N/A', Table: toTitleCase(a.tableName), 'Allocated Date': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '-' })),
               'Allocations', 'allocations')}
             onPrint={() => printTable('Book Allocations', EXCEL_COLUMNS,
-              filtered.map((a) => ({ Book: a.book?.title || 'N/A', Table: a.tableName, 'Allocated Date': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '-' })),
+              filtered.map((a) => ({ Book: a.book?.title || 'N/A', Table: toTitleCase(a.tableName), 'Allocated Date': a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '-' })),
               user?.school?.name)}
           />
           <button onClick={() => setShowModal(true)}
@@ -139,7 +142,7 @@ export default function Allocations() {
               {paginated.map((a, idx) => (
                 <tr key={a._id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition ${idx % 2 ? 'bg-blue-50/20' : 'bg-white'}`}>
                   <td className="p-4 font-medium text-gray-900">{a.book?.title || 'N/A'}</td>
-                  <td className="p-4"><span className="px-2.5 py-1 bg-indigo-50 rounded-full text-xs text-indigo-600">{a.tableName}</span></td>
+                  <td className="p-4"><span className="px-2.5 py-1 bg-indigo-50 rounded-full text-xs text-indigo-600">{toTitleCase(a.tableName)}</span></td>
                   <td className="p-4 text-center">
                     <button onClick={() => handleDelete(a._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete">
                       <Trash2 size={15} />
@@ -176,7 +179,7 @@ export default function Allocations() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Table Name</label>
                 <input required value={form.tableName} onChange={(e) => setForm({ ...form, tableName: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                  placeholder="e.g. TABLE 1 SWD" />
+                  placeholder="e.g. Table 1 Swd" />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={loading}
