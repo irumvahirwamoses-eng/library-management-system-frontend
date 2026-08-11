@@ -304,17 +304,26 @@ export default function Books() {
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
               <input placeholder="Author" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <input placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
+                    <option value="">Select existing category</option>
+                    {categoryStats.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
+                  </select>
+                  <input placeholder="Or type a new category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition mt-2"
                     list="category-options" />
                   <datalist id="category-options">
                     {categoryStats.map((c) => <option key={c.category} value={c.category} />)}
                   </datalist>
                 </div>
-                <input placeholder="ISBN" value={form.isbn} onChange={(e) => setForm({ ...form, isbn: e.target.value })}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">ISBN</label>
+                  <input placeholder="ISBN" value={form.isbn} onChange={(e) => setForm({ ...form, isbn: e.target.value })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Location</label>
