@@ -61,7 +61,7 @@ export default function Books() {
   useEffect(() => { loadCategories(); }, []);
   useEffect(() => { setPage(1); }, [search, categoryFilter, locationFilter, availabilityFilter]);
 
-  const categories = [...new Set(books.map((b) => b.category).filter(Boolean))];
+  const categories = [...new Set(books.map((b) => String(b.category || '').trim().toUpperCase()).filter(Boolean))];
   const totalPages = Math.ceil(books.length / PAGE_SIZE);
   const paginatedBooks = books.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -162,10 +162,10 @@ export default function Books() {
           <ExportButtons
             disabled={books.length === 0}
             onExcel={() => exportExcel(
-              books.map((b) => ({ Title: b.title, Author: b.author || '', Category: b.category || '', Location: b.location || '', ISBN: b.isbn || '', Quantity: b.quantity, Available: b.available })),
+              books.map((b) => ({ Title: b.title, Author: b.author || '', Category: (b.category || 'Uncategorized').toUpperCase(), Location: b.location || '', ISBN: b.isbn || '', Quantity: b.quantity, Available: b.available })),
               'Books', 'books')}
             onPrint={() => printTable('Books List', EXCEL_COLUMNS,
-              books.map((b) => ({ Title: b.title, Author: b.author || '', Category: b.category || '', Location: b.location || '', ISBN: b.isbn || '', Quantity: b.quantity, Available: b.available })),
+              books.map((b) => ({ Title: b.title, Author: b.author || '', Category: (b.category || 'Uncategorized').toUpperCase(), Location: b.location || '', ISBN: b.isbn || '', Quantity: b.quantity, Available: b.available })),
               user?.school?.name)}
           />
           <button onClick={() => { setEditBook(null); setForm({ title: '', author: '', category: '', isbn: '', quantity: 1, available: 1, location: '' }); setShowModal(true); }}
@@ -220,7 +220,7 @@ export default function Books() {
                 <tr key={book._id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition ${idx % 2 ? 'bg-blue-50/20' : 'bg-white'}`}>
                   <td className="p-4 font-medium text-gray-900">{book.title}</td>
                   <td className="p-4 text-gray-500">{book.author || '-'}</td>
-                  <td className="p-4"><span className="px-2.5 py-1 bg-blue-50 rounded-full text-xs text-blue-600">{book.category || 'Uncategorized'}</span></td>
+                  <td className="p-4"><span className="px-2.5 py-1 bg-blue-50 rounded-full text-xs text-blue-600">{(book.category || 'Uncategorized').toUpperCase()}</span></td>
                   <td className="p-4"><span className="px-2.5 py-1 bg-indigo-50 rounded-full text-xs text-indigo-600">{book.location || '-'}</span></td>
                   <td className="p-4 text-gray-400 font-mono text-xs">{book.isbn || '-'}</td>
                   <td className="p-4 text-center">{book.quantity}</td>
@@ -307,12 +307,12 @@ export default function Books() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
-                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value.toUpperCase() })}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white">
                     <option value="">Select existing category</option>
                     {categoryStats.map((c) => <option key={c.category} value={c.category}>{c.category}</option>)}
                   </select>
-                  <input placeholder="Or type a new category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  <input placeholder="Or type a new category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value.toUpperCase() })}
                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition mt-2"
                     list="category-options" />
                   <datalist id="category-options">

@@ -62,7 +62,7 @@ export default function Archive() {
     const data = books.map((b) => ({
       Title: b.title,
       Author: b.author || '-',
-      Category: b.category || 'Uncategorized',
+      Category: (b.category || 'Uncategorized').toUpperCase(),
       ISBN: b.isbn || '-',
       ArchivedAt: b.archivedAt ? new Date(b.archivedAt).toLocaleDateString() : '-'
     }));
@@ -111,7 +111,7 @@ export default function Archive() {
                 <tr key={book._id} className={`border-b border-gray-50 hover:bg-amber-50/30 transition ${idx % 2 ? 'bg-amber-50/20' : 'bg-white'}`}>
                   <td className="p-4 font-medium text-gray-900">{book.title}</td>
                   <td className="p-4 text-gray-500">{book.author || '-'}</td>
-                  <td className="p-4"><span className="px-2.5 py-1 bg-amber-100 rounded-full text-xs text-amber-700">{book.category || 'Uncategorized'}</span></td>
+                  <td className="p-4"><span className="px-2.5 py-1 bg-amber-100 rounded-full text-xs text-amber-700">{(book.category || 'Uncategorized').toUpperCase()}</span></td>
                   <td className="p-4 text-gray-400 font-mono text-xs">{book.isbn || '-'}</td>
                   <td className="p-4 text-gray-500">{book.archivedAt ? new Date(book.archivedAt).toLocaleDateString() : '-'}</td>
                   <td className="p-4 text-center">

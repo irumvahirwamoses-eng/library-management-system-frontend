@@ -31,7 +31,7 @@ export default function MyBooks() {
   useEffect(() => { load(); }, [search, categoryFilter, availability]);
   useEffect(() => { setPage(1); }, [search, categoryFilter, availability]);
 
-  const categories = [...new Set(books.map((b) => b.category).filter(Boolean))];
+  const categories = [...new Set(books.map((b) => String(b.category || '').trim().toUpperCase()).filter(Boolean))];
   const totalPages = Math.ceil(books.length / PAGE_SIZE);
   const paginated = books.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -101,7 +101,7 @@ export default function MyBooks() {
                     </div>
                   </td>
                   <td className="p-4 text-gray-500">{b.author || '-'}</td>
-                  <td className="p-4"><span className="px-2.5 py-1 bg-blue-50 rounded-full text-xs text-blue-600">{b.category || 'Uncategorized'}</span></td>
+                  <td className="p-4"><span className="px-2.5 py-1 bg-blue-50 rounded-full text-xs text-blue-600">{(b.category || 'Uncategorized').toUpperCase()}</span></td>
                   <td className="p-4 text-center">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${b.available > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                       {b.available > 0 ? `${b.available} Available` : 'Out of stock'}
