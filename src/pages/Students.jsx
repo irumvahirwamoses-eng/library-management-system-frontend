@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
 
-const EXCEL_COLUMNS = ['NESA Code', 'Name', 'Class', 'Phone', 'Level'];
+const EXCEL_COLUMNS = ['NESA Code', 'Name', 'Class', 'Phone', 'Email', 'Level'];
 
 export default function Students() {
   const { user } = useAuth();
@@ -19,7 +19,7 @@ export default function Students() {
   const [showModal, setShowModal] = useState(false);
   const [editStudent, setEditStudent] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ nesaCode: '', studentName: '', class: '', phonenumber: '', level: '' });
+  const [form, setForm] = useState({ nesaCode: '', studentName: '', class: '', email: '', phonenumber: '', level: '' });
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('');
@@ -66,7 +66,7 @@ export default function Students() {
       }
       setShowModal(false);
       setEditStudent(null);
-      setForm({ nesaCode: '', studentName: '', class: '', phonenumber: '', level: '' });
+      setForm({ nesaCode: '', studentName: '', class: '', email: '', phonenumber: '', level: '' });
       load();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Operation failed');
@@ -77,7 +77,7 @@ export default function Students() {
 
   const handleEdit = (s) => {
     setEditStudent(s);
-    setForm({ nesaCode: s.nesaCode, studentName: s.studentName, class: s.class || '', phonenumber: s.phonenumber || '', level: s.level || '' });
+    setForm({ nesaCode: s.nesaCode, studentName: s.studentName, class: s.class || '', email: s.email || '', phonenumber: s.phonenumber || '', level: s.level || '' });
     setShowModal(true);
   };
 
@@ -103,17 +103,17 @@ export default function Students() {
           <ExportButtons
             disabled={filtered.length === 0}
             onExcel={() => exportExcel(
-              filtered.map((s) => ({ 'NESA Code': s.nesaCode, Name: s.studentName, Class: s.class || '', Phone: s.phonenumber || '', Level: s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '' })),
+              filtered.map((s) => ({ 'NESA Code': s.nesaCode, Name: s.studentName, Class: s.class || '', Phone: s.phonenumber || '', Email: s.email || '', Level: s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '' })),
               'Students', 'students')}
             onPrint={() => printTable('Students List', EXCEL_COLUMNS,
-              filtered.map((s) => ({ 'NESA Code': s.nesaCode, Name: s.studentName, Class: s.class || '', Phone: s.phonenumber || '', Level: s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '' })),
+              filtered.map((s) => ({ 'NESA Code': s.nesaCode, Name: s.studentName, Class: s.class || '', Phone: s.phonenumber || '', Email: s.email || '', Level: s.level ? s.level.charAt(0).toUpperCase() + s.level.slice(1) : '' })),
               user?.school?.name)}
           />
           <button onClick={() => setShowImport(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition shadow-md font-medium text-sm">
             <Upload size={16} /> Import
           </button>
-          <button onClick={() => { setEditStudent(null); setForm({ nesaCode: '', studentName: '', class: '', phonenumber: '', level: '' }); setShowModal(true); }}
+          <button onClick={() => { setEditStudent(null); setForm({ nesaCode: '', studentName: '', class: '', email: '', phonenumber: '', level: '' }); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
             <Plus size={16} /> Add Student
           </button>
@@ -156,6 +156,7 @@ export default function Students() {
                 <th className="text-left p-4 font-semibold text-blue-700">Name</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Class</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Phone</th>
+                <th className="text-left p-4 font-semibold text-blue-700">Email</th>
                 {isTVET && <th className="text-left p-4 font-semibold text-blue-700">Level</th>}
                 <th className="text-center p-4 font-semibold text-blue-700">Actions</th>
               </tr>
@@ -167,6 +168,7 @@ export default function Students() {
                   <td className="p-4 font-medium text-gray-900">{s.studentName}</td>
                   <td className="p-4 text-gray-500">{s.class || '-'}</td>
                   <td className="p-4 text-gray-500">{s.phonenumber || '-'}</td>
+                  <td className="p-4 text-gray-500">{s.email || '-'}</td>
                   {isTVET && (
                     <td className="p-4">
                       {s.level ? <span className="px-2.5 py-1 bg-blue-50 rounded-full text-xs text-blue-600 capitalize">{s.level}</span> : '-'}
@@ -181,7 +183,7 @@ export default function Students() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={6} className="p-12 text-center text-gray-400">
+                <tr><td colSpan={7} className="p-12 text-center text-gray-400">
                   <Users size={40} className="mx-auto mb-3 opacity-30" />
                   <p>No students found</p>
                 </td></tr>
@@ -208,6 +210,8 @@ export default function Students() {
               <input placeholder="Class" value={form.class} onChange={(e) => setForm({ ...form, class: e.target.value })}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
               <input placeholder="Phone" value={form.phonenumber} onChange={(e) => setForm({ ...form, phonenumber: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
+              <input type="email" placeholder="Email (for notifications)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
               {isTVET && (
                 <select value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })}

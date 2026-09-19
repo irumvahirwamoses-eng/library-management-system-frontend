@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Plus, Search, Edit3, Trash2, Book, X, UserCheck, Archive } from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Book, BookOpen, Archive } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 import Pagination from '../components/Pagination';
 import ExportButtons from '../components/ExportButtons';
+import BorrowForm from '../components/BorrowForm';
 import { exportExcel, printTable } from '../utils/export';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,11 +27,6 @@ export default function Books() {
   const [form, setForm] = useState({ title: '', author: '', category: '', isbn: '', quantity: 1, available: 1, location: '' });
   const [page, setPage] = useState(1);
   const [showBorrowModal, setShowBorrowModal] = useState(false);
-  const [borrowBook, setBorrowBook] = useState(null);
-  const [nesaCode, setNesaCode] = useState('');
-  const [borrowStudent, setBorrowStudent] = useState(null);
-  const [borrowLoading, setBorrowLoading] = useState(false);
-  const [studentLoading, setStudentLoading] = useState(false);
 
   const loadBooks = async () => {
     const params = {};
@@ -120,37 +116,6 @@ export default function Books() {
     }
   };
 
-  const handleLookupStudent = async () => {
-    if (!nesaCode || nesaCode.length !== 12) { toast.error('Enter a valid 12-digit NESA code'); return; }
-    setStudentLoading(true);
-    setBorrowStudent(null);
-    try {
-      const res = await api.get(`/students?search=${nesaCode}`);
-      const found = res.data.find((s) => s.nesaCode === nesaCode);
-      if (found) { setBorrowStudent(found); toast.success('Student found'); }
-      else toast.error('No student found with this NESA code');
-    } catch { toast.error('Failed to lookup student'); }
-    finally { setStudentLoading(false); }
-  };
-
-  const handleBorrowSubmit = async () => {
-    if (!borrowStudent) { toast.error('Look up a student first'); return; }
-    setBorrowLoading(true);
-    try {
-      await api.post('/borrowed', { book: borrowBook._id, student: borrowStudent._id });
-      toast.success(`"${borrowBook.title}" borrowed by ${borrowStudent.studentName}`);
-      setShowBorrowModal(false);
-      setBorrowBook(null);
-      setNesaCode('');
-      setBorrowStudent(null);
-      loadBooks();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to borrow book');
-    } finally {
-      setBorrowLoading(false);
-    }
-  };
-
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -168,6 +133,10 @@ export default function Books() {
               books.map((b) => ({ Title: b.title, Author: b.author || '', Category: (b.category || 'Uncategorized').toUpperCase(), Location: b.location || '', ISBN: b.isbn || '', Quantity: b.quantity, Available: b.available })),
               user?.school?.name)}
           />
+          <button onClick={() => setShowBorrowModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition shadow-md font-medium text-sm">
+            <BookOpen size={16} /> New Borrow
+          </button>
           <button onClick={() => { setEditBook(null); setForm({ title: '', author: '', category: '', isbn: '', quantity: 1, available: 1, location: '' }); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
             <Plus size={16} /> Add Book
@@ -231,12 +200,6 @@ export default function Books() {
                   </td>
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      {book.available > 0 && (
-                        <button onClick={() => { setBorrowBook(book); setNesaCode(''); setBorrowStudent(null); setShowBorrowModal(true); }}
-                          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition" title="Borrow">
-                          <UserCheck size={15} />
-                        </button>
-                      )}
                       <button onClick={() => handleEdit(book)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit"><Edit3 size={15} /></button>
                       <button onClick={() => handleArchive(book._id)} className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition" title="Archive"><Archive size={15} /></button>
                       <button onClick={() => handleDelete(book._id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition" title="Delete"><Trash2 size={15} /></button>
@@ -367,42 +330,9 @@ export default function Books() {
         </div>
       )}
 
-      {showBorrowModal && borrowBook && (
+      {showBorrowModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowBorrowModal(false)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Borrow Book</h2>
-              <button onClick={() => setShowBorrowModal(false)} className="p-1 hover:bg-gray-100 rounded-lg transition"><X size={18} /></button>
-            </div>
-            <div className="bg-blue-50 rounded-xl p-3 mb-4 text-sm">
-              <p className="font-medium text-blue-800">{borrowBook.title}</p>
-              <p className="text-blue-600 text-xs mt-0.5">Available: {borrowBook.available} copies</p>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Student NESA Code</label>
-                <div className="flex gap-2">
-                  <input value={nesaCode} onChange={(e) => setNesaCode(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition font-mono"
-                    placeholder="12-digit NESA code" maxLength={12} />
-                  <button onClick={handleLookupStudent} disabled={studentLoading}
-                    className="px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition shadow-md disabled:opacity-50 text-sm font-medium">
-                    {studentLoading ? '...' : 'Lookup'}
-                  </button>
-                </div>
-              </div>
-              {borrowStudent && (
-                <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
-                  <p className="font-medium text-emerald-800">{borrowStudent.studentName}</p>
-                  <p className="text-emerald-600 text-xs">Class: {borrowStudent.class || 'N/A'} | Level: {borrowStudent.level || 'N/A'}</p>
-                </div>
-              )}
-              <button onClick={handleBorrowSubmit} disabled={!borrowStudent || borrowLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-medium hover:from-blue-700 hover:to-indigo-700 transition shadow-md disabled:opacity-50 text-sm">
-                {borrowLoading ? 'Processing...' : 'Confirm Borrow'}
-              </button>
-            </div>
-          </div>
+          <BorrowForm onSuccess={() => { setShowBorrowModal(false); loadBooks(); }} onClose={() => setShowBorrowModal(false)} />
         </div>
       )}
     </div>

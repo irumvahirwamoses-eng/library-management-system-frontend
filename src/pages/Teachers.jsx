@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
 
-const EXCEL_COLUMNS = ['Name', 'Subject', 'National ID', 'Phone'];
+const EXCEL_COLUMNS = ['Name', 'Subject', 'National ID', 'Phone', 'Email'];
 
 export default function Teachers() {
   const { user } = useAuth();
@@ -18,7 +18,7 @@ export default function Teachers() {
   const [showModal, setShowModal] = useState(false);
   const [editTeacher, setEditTeacher] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ teacherName: '', subject: '', identityNumber: '', phone: '' });
+  const [form, setForm] = useState({ teacherName: '', subject: '', identityNumber: '', email: '', phone: '' });
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('');
@@ -62,7 +62,7 @@ export default function Teachers() {
       }
       setShowModal(false);
       setEditTeacher(null);
-      setForm({ teacherName: '', subject: '', identityNumber: '', phone: '' });
+      setForm({ teacherName: '', subject: '', identityNumber: '', email: '', phone: '' });
       load();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Operation failed');
@@ -73,7 +73,7 @@ export default function Teachers() {
 
   const handleEdit = (t) => {
     setEditTeacher(t);
-    setForm({ teacherName: t.teacherName, subject: t.subject, identityNumber: t.identityNumber, phone: t.phone || '' });
+    setForm({ teacherName: t.teacherName, subject: t.subject, identityNumber: t.identityNumber, email: t.email || '', phone: t.phone || '' });
     setShowModal(true);
   };
 
@@ -99,17 +99,17 @@ export default function Teachers() {
           <ExportButtons
             disabled={filtered.length === 0}
             onExcel={() => exportExcel(
-              filtered.map((t) => ({ Name: t.teacherName, Subject: t.subject, 'National ID': t.identityNumber, Phone: t.phone || '' })),
+              filtered.map((t) => ({ Name: t.teacherName, Subject: t.subject, 'National ID': t.identityNumber, Phone: t.phone || '', Email: t.email || '' })),
               'Teachers', 'teachers')}
             onPrint={() => printTable('Teachers List', EXCEL_COLUMNS,
-              filtered.map((t) => ({ Name: t.teacherName, Subject: t.subject, 'National ID': t.identityNumber, Phone: t.phone || '' })),
+              filtered.map((t) => ({ Name: t.teacherName, Subject: t.subject, 'National ID': t.identityNumber, Phone: t.phone || '', Email: t.email || '' })),
               user?.school?.name)}
           />
           <button onClick={() => setShowImport(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl hover:from-emerald-700 hover:to-teal-700 transition shadow-md font-medium text-sm">
             <Upload size={16} /> Import
           </button>
-          <button onClick={() => { setEditTeacher(null); setForm({ teacherName: '', subject: '', identityNumber: '', phone: '' }); setShowModal(true); }}
+          <button onClick={() => { setEditTeacher(null); setForm({ teacherName: '', subject: '', identityNumber: '', email: '', phone: '' }); setShowModal(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition shadow-md font-medium text-sm">
             <Plus size={16} /> Add Teacher
           </button>
@@ -145,6 +145,7 @@ export default function Teachers() {
                 <th className="text-left p-4 font-semibold text-blue-700">Subject</th>
                 <th className="text-left p-4 font-semibold text-blue-700">National ID</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Phone</th>
+                <th className="text-left p-4 font-semibold text-blue-700">Email</th>
                 <th className="text-center p-4 font-semibold text-blue-700">Actions</th>
               </tr>
             </thead>
@@ -155,6 +156,7 @@ export default function Teachers() {
                   <td className="p-4"><span className="px-2.5 py-1 bg-blue-50 rounded-full text-xs text-blue-600">{t.subject}</span></td>
                   <td className="p-4 font-mono text-xs text-gray-400">{t.identityNumber}</td>
                   <td className="p-4 text-gray-500">{t.phone || '-'}</td>
+                  <td className="p-4 text-gray-500">{t.email || '-'}</td>
                   <td className="p-4 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button onClick={() => handleEdit(t)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit"><Edit3 size={15} /></button>
@@ -164,7 +166,7 @@ export default function Teachers() {
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={5} className="p-12 text-center text-gray-400">
+                <tr><td colSpan={6} className="p-12 text-center text-gray-400">
                   <Grid3X3 size={40} className="mx-auto mb-3 opacity-30" />
                   <p>No teachers found</p>
                 </td></tr>
@@ -191,6 +193,8 @@ export default function Teachers() {
                   className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition font-mono" placeholder="e.g. 1234567891234567" />
               </div>
               <input placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
+              <input type="email" placeholder="Email (for notifications)" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={loading}

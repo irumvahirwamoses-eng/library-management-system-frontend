@@ -38,6 +38,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
           teacherName: fullName,
           identityNumber: rawId,
           subject: '',
+          email: String(row['Email'] || '').trim(),
           phone: '',
         };
       });
@@ -62,6 +63,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
           nesaCode: code,
           studentName: name,
           class: className,
+          email: '',
           phonenumber: '',
           level: className.startsWith('L3') ? 'level3' : className.startsWith('L4') ? 'level4' : className.startsWith('L5') ? 'level5' : '',
         });
@@ -140,6 +142,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
           nesaCode: find('nesa code', 'code', 'nesacode'),
           studentName: find('name', 'names', 'student name', 'studentname', 'full name'),
           class: find('class', 'cls'),
+          email: find('email', 'email address'),
           phonenumber: find('phone', 'phone number', 'phonenumber', 'tel'),
           level: find('level'),
         };
@@ -148,6 +151,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
           teacherName: find('name', 'teacher name', 'teachername', 'full name'),
           subject: find('subject'),
           identityNumber: find('national id', 'identity number', 'identitynumber', 'id number', 'id'),
+          email: find('email', 'email address'),
           phone: find('phone', 'phone number', 'phonenumber', 'tel'),
         };
       }
@@ -242,14 +246,14 @@ export default function ImportModal({ open, onClose, type, onImported }) {
             {type === 'students' && (
               <div className="mt-4 p-4 bg-blue-50 rounded-xl">
                 <p className="text-sm font-medium text-blue-800 mb-2">Expected columns (any order):</p>
-                <p className="text-xs text-blue-600">NESA Code (12 digits), Name, Class, Phone, Level</p>
+                <p className="text-xs text-blue-600">NESA Code (12 digits), Name, Class, Phone, Email, Level</p>
                 <p className="text-xs text-blue-500 mt-1">Also supports multi-sheet attendance format (auto-detects class from sheet names)</p>
               </div>
             )}
             {type === 'teachers' && (
               <div className="mt-4 p-4 bg-blue-50 rounded-xl">
                 <p className="text-sm font-medium text-blue-800 mb-2">Expected columns (any order):</p>
-                <p className="text-xs text-blue-600">Name (or FirstName + LastName), Subject, National ID (16 digits), Phone</p>
+                <p className="text-xs text-blue-600">Name (or FirstName + LastName), Subject, National ID (16 digits), Phone, Email</p>
                 <p className="text-xs text-blue-500 mt-1">Also supports Staff Identification format (auto-combines FirstName + LastName, strips spaces from ID)</p>
               </div>
             )}
@@ -290,6 +294,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
                         <th className="text-left p-3 font-medium text-gray-600">NESA Code</th>
                         <th className="text-left p-3 font-medium text-gray-600">Name</th>
                         <th className="text-left p-3 font-medium text-gray-600">Class</th>
+                        <th className="text-left p-3 font-medium text-gray-600">Email</th>
                         <th className="text-left p-3 font-medium text-gray-600">Status</th>
                       </>
                     ) : (
@@ -298,6 +303,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
                         <th className="text-left p-3 font-medium text-gray-600">Name</th>
                         <th className="text-left p-3 font-medium text-gray-600">Subject</th>
                         <th className="text-left p-3 font-medium text-gray-600">National ID</th>
+                        <th className="text-left p-3 font-medium text-gray-600">Email</th>
                         <th className="text-left p-3 font-medium text-gray-600">Status</th>
                       </>
                     )}
@@ -315,6 +321,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
                             <td className="p-3 font-mono text-gray-700">{row.nesaCode || '-'}</td>
                             <td className="p-3 text-gray-700">{row.studentName || '-'}</td>
                             <td className="p-3 text-gray-500">{row.class || '-'}</td>
+                            <td className="p-3 text-gray-400">{row.email || '-'}</td>
                             <td className="p-3">
                               {isInvalid ? (
                                 <span className="text-red-600 text-xs" title={err?.error}>{err?.error?.substring(0, 30)}</span>
@@ -329,6 +336,7 @@ export default function ImportModal({ open, onClose, type, onImported }) {
                             <td className="p-3 text-gray-700">{row.teacherName || '-'}</td>
                             <td className="p-3 text-gray-500">{row.subject || '-'}</td>
                             <td className="p-3 font-mono text-gray-700">{row.identityNumber || '-'}</td>
+                            <td className="p-3 text-gray-400">{row.email || '-'}</td>
                             <td className="p-3">
                               {isInvalid ? (
                                 <span className="text-red-600 text-xs" title={err?.error}>{err?.error?.substring(0, 30)}</span>
