@@ -12,7 +12,11 @@ const PAGE_SIZE = 15;
 
 const EXCEL_COLUMNS = ['Book', 'Borrowed By', 'Type', 'Borrow Date', 'Return Date', 'Status'];
 
-const borrowerKey = (r) => r.student ? `s:${r.student._id}` : `t:${r.teacher._id}`;
+const borrowerKey = (r) => {
+  if (r.student?._id) return `s:${r.student._id}`;
+  if (r.teacher?._id) return `t:${r.teacher._id}`;
+  return `none:${r._id}`;
+};
 
 export default function Borrowed() {
   const { user } = useAuth();
@@ -76,7 +80,11 @@ export default function Borrowed() {
   };
 
   const handleReturnAll = async (r) => {
-    const payload = r.student ? { student: r.student._id } : { teacher: r.teacher._id };
+    const payload = r.student?._id ? { student: r.student._id } : r.teacher?._id ? { teacher: r.teacher._id } : null;
+    if (!payload) {
+      toast.error('Borrower record is missing for these books');
+      return;
+    }
     const name = r.student?.studentName || r.teacher?.teacherName || 'this borrower';
     const count = activeCountByBorrower.get(borrowerKey(r)) || 0;
     if (!confirm(`Return all ${count} borrowed book(s) for ${name}?`)) return;
