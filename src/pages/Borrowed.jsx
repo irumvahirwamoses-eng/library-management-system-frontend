@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
 
-const EXCEL_COLUMNS = ['Book', 'Borrowed By', 'Type', 'Borrow Date', 'Return Date', 'Status'];
+const EXCEL_COLUMNS = ['Book', 'Borrowed By', 'Type', 'Borrow Date', 'Due Date', 'Return Date', 'Status'];
 
 const borrowerKey = (r) => {
   if (r.student?._id) return `s:${r.student._id}`;
@@ -113,6 +113,7 @@ export default function Borrowed() {
                 'Borrowed By': r.student?.studentName || r.teacher?.teacherName || 'N/A',
                 Type: r.student ? 'Student' : 'Teacher',
                 'Borrow Date': r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-',
+                'Due Date': r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-',
                 'Return Date': r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-',
                 Status: r.status === 'borrowed' ? 'Borrowed' : 'Returned'
               })),
@@ -123,6 +124,7 @@ export default function Borrowed() {
                 'Borrowed By': r.student?.studentName || r.teacher?.teacherName || 'N/A',
                 Type: r.student ? 'Student' : 'Teacher',
                 'Borrow Date': r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-',
+                'Due Date': r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-',
                 'Return Date': r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-',
                 Status: r.status === 'borrowed' ? 'Borrowed' : 'Returned'
               })),
@@ -165,6 +167,7 @@ export default function Borrowed() {
                 <th className="text-left p-4 font-semibold text-blue-700">Borrowed By</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Type</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Borrow Date</th>
+                <th className="text-left p-4 font-semibold text-blue-700">Due Date</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Return Date</th>
                 <th className="text-center p-4 font-semibold text-blue-700">Status</th>
               </tr>
@@ -193,6 +196,12 @@ export default function Borrowed() {
                       </span>
                     </td>
                     <td className="p-4 text-gray-500">{r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-'}</td>
+                    <td className={`p-4 ${r.status === 'borrowed' && r.dueDate && new Date(r.dueDate) < new Date(new Date().setHours(0,0,0,0)) ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                      {r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-'}
+                      {r.status === 'borrowed' && r.dueDate && new Date(r.dueDate) < new Date(new Date().setHours(0,0,0,0)) && (
+                        <span className="ml-2 px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-xs font-medium">Overdue</span>
+                      )}
+                    </td>
                     <td className="p-4 text-gray-500">{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-'}</td>
                     <td className="p-4 text-center">
                       {r.status === 'borrowed' ? (
