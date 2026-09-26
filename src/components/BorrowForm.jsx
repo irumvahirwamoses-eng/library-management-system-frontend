@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, X, Minus, Trash2, ChevronDown, Loader2 } from 'lucide-react';
+import { Search, X, Minus, Trash2, ChevronDown, Loader2, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
+
+const toISODate = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const defaultReturnDate = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 14);
+  return toISODate(d);
+};
+
+const todayISO = () => toISODate(new Date());
 
 export default function BorrowForm({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
@@ -18,6 +33,7 @@ export default function BorrowForm({ onClose, onSuccess }) {
   const [cart, setCart] = useState([]);
   const [teacherQuery, setTeacherQuery] = useState('');
   const [showTeacherResults, setShowTeacherResults] = useState(false);
+  const [returnDate, setReturnDate] = useState(defaultReturnDate);
 
   useEffect(() => {
     api.get('/teachers')
@@ -70,6 +86,7 @@ export default function BorrowForm({ onClose, onSuccess }) {
     setTeacherQuery('');
     setShowTeacherResults(false);
     setShowBookResults(false);
+    setReturnDate(defaultReturnDate());
   };
 
   const addToCart = (b) => {
@@ -110,7 +127,8 @@ export default function BorrowForm({ onClose, onSuccess }) {
     if (overLimit) { toast.error(`Only ${overLimit.available} copy/copies of "${overLimit.title}" available`); return; }
     setLoading(true);
     try {
-      const payload = { items: cart.map((c) => ({ bookId: c.bookId, quantity: c.quantity })) };
+      if (returnDate < todayISO()) { toast.error('Return date cannot be in the past'); setLoading(false); return; }
+      const payload = { items: cart.map((c) => ({ bookId: c.bookId, quantity: c.quantity })), returnDate };
       if (borrowType === 'student') {
         if (!borrowStudent) { toast.error('Look up student with NESA code'); setLoading(false); return; }
         payload.student = borrowStudent._id;
@@ -254,6 +272,16 @@ export default function BorrowForm({ onClose, onSuccess }) {
             </div>
           </div>
         )}
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+            <Calendar size={14} className="text-gray-400" /> Return Date (when the book(s) must be back)
+          </label>
+          <input type="date" value={returnDate} min={todayISO()}
+            onChange={(e) => setReturnDate(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white" />
+          <p className="mt-1 text-xs text-gray-400">The borrower will get an email reminder when this date is reached.</p>
+        </div>
 
         <div className="flex gap-3 pt-2">
           <button type="submit" disabled={loading || cart.length === 0}
