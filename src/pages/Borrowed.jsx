@@ -10,13 +10,21 @@ import { useAuth } from '../context/AuthContext';
 
 const PAGE_SIZE = 15;
 
-const EXCEL_COLUMNS = ['Book', 'Borrowed By', 'Type', 'Borrow Date', 'Due Date', 'Return Date', 'Status'];
+const EXCEL_COLUMNS = ['Book', 'Copies', 'Borrowed By', 'Type', 'Borrow Date', 'Due Date', 'Return Date', 'Status'];
 
 const borrowerKey = (r) => {
   if (r.student?._id) return `s:${r.student._id}`;
   if (r.teacher?._id) return `t:${r.teacher._id}`;
   return `none:${r._id}`;
 };
+
+const borrowerPayload = (r) => {
+  if (r.student?._id) return { student: r.student._id };
+  if (r.teacher?._id) return { teacher: r.teacher._id };
+  return null;
+};
+
+const borrowerNameOf = (r) => r.student?.studentName || r.teacher?.teacherName || 'N/A';
 
 export default function Borrowed() {
   const { user } = useAuth();
@@ -49,10 +57,10 @@ export default function Borrowed() {
     return m;
   }, [records]);
 
-  const filtered = records.filter((r) => {
+  const filtered = useMemo(() => records.filter((r) => {
     if (search) {
       const q = search.toLowerCase();
-      const match = (r.book?.title || '').toLowerCase().includes(q) || (r.student?.studentName || r.teacher?.teacherName || '').toLowerCase().includes(q);
+      const match = (r.book?.title || '').toLowerCase().includes(q) || borrowerNameOf(r).toLowerCase().includes(q);
       if (!match) return false;
     }
     if (typeFilter) {
@@ -61,31 +69,67 @@ export default function Borrowed() {
     }
     if (statusFilter && r.status !== statusFilter) return false;
     return true;
-  });
+  }), [records, search, typeFilter, statusFilter]);
+
+  // Group identical book + borrower + status into a single row (fixes duplicate rows).
+  const groups = useMemo(() => {
+    const map = new Map();
+    const out = [];
+    for (const r of filtered) {
+      const gk = `${borrowerKey(r)}::${r.status}::${r.book?._id || 'none'}`;
+      let g = map.get(gk);
+      if (!g) {
+        g = {
+          key: gk,
+          records: [],
+          book: r.book || null,
+          student: r.student || null,
+          teacher: r.teacher || null,
+          status: r.status,
+          type: r.student ? 'student' : 'teacher'
+        };
+        map.set(gk, g);
+        out.push(g);
+      }
+      g.records.push(r);
+    }
+    return out;
+  }, [filtered]);
 
   useEffect(() => { setPage(1); }, [search, typeFilter, statusFilter]);
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(groups.length / PAGE_SIZE);
+  const paginated = groups.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const seenBorrowers = new Set();
+  const endOfToday = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const handleReturn = async (id) => {
+  const handleReturnBook = async (g) => {
+    const borr = borrowerPayload(g.records[0]);
+    if (!borr || !g.book?._id) {
+      toast.error('Borrower or book record is missing');
+      return;
+    }
+    const n = g.records.length;
+    if (!confirm(`Return ${n} ${n === 1 ? 'copy' : 'copies'} of "${g.book.title}"?`)) return;
     try {
-      await api.put(`/borrowed/${id}/return`);
-      toast.success('Book returned successfully');
+      const res = await api.put('/borrowed/return-book', { book: g.book._id, ...borr });
+      toast.success(`${res.data.updated} ${res.data.updated === 1 ? 'copy' : 'copies'} returned`);
       load();
     } catch (err) {
-      toast.error('Failed to return book');
+      toast.error(err.response?.data?.error || 'Failed to return book(s)');
     }
   };
 
   const handleReturnAll = async (r) => {
-    const payload = r.student?._id ? { student: r.student._id } : r.teacher?._id ? { teacher: r.teacher._id } : null;
+    const payload = borrowerPayload(r);
     if (!payload) {
       toast.error('Borrower record is missing for these books');
       return;
     }
-    const name = r.student?.studentName || r.teacher?.teacherName || 'this borrower';
+    const name = borrowerNameOf(r);
     const count = activeCountByBorrower.get(borrowerKey(r)) || 0;
     if (!confirm(`Return all ${count} borrowed book(s) for ${name}?`)) return;
     try {
@@ -97,6 +141,8 @@ export default function Borrowed() {
     }
   };
 
+  const seenBorrowers = new Set();
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -106,27 +152,29 @@ export default function Borrowed() {
         </div>
         <div className="flex items-center gap-2">
           <ExportButtons
-            disabled={filtered.length === 0}
+            disabled={groups.length === 0}
             onExcel={() => exportExcel(
-              filtered.map((r) => ({
-                Book: r.book?.title || 'N/A',
-                'Borrowed By': r.student?.studentName || r.teacher?.teacherName || 'N/A',
-                Type: r.student ? 'Student' : 'Teacher',
-                'Borrow Date': r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-',
-                'Due Date': r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-',
-                'Return Date': r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-',
-                Status: r.status === 'borrowed' ? 'Borrowed' : 'Returned'
+              groups.map((g) => ({
+                Book: g.book?.title || 'N/A',
+                Copies: g.records.length,
+                'Borrowed By': borrowerNameOf(g.records[0]),
+                Type: g.type === 'student' ? 'Student' : 'Teacher',
+                'Borrow Date': g.records[0]?.borrowDate ? new Date(g.records[0].borrowDate).toLocaleDateString() : '-',
+                'Due Date': g.records[0]?.dueDate ? new Date(g.records[0].dueDate).toLocaleDateString() : '-',
+                'Return Date': g.records[0]?.returnDate ? new Date(g.records[0].returnDate).toLocaleDateString() : '-',
+                Status: g.status === 'borrowed' ? 'Borrowed' : 'Returned'
               })),
               'Borrowings', 'borrowings')}
             onPrint={() => printTable('Borrow / Return Records', EXCEL_COLUMNS,
-              filtered.map((r) => ({
-                Book: r.book?.title || 'N/A',
-                'Borrowed By': r.student?.studentName || r.teacher?.teacherName || 'N/A',
-                Type: r.student ? 'Student' : 'Teacher',
-                'Borrow Date': r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-',
-                'Due Date': r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-',
-                'Return Date': r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-',
-                Status: r.status === 'borrowed' ? 'Borrowed' : 'Returned'
+              groups.map((g) => ({
+                Book: g.book?.title || 'N/A',
+                Copies: g.records.length,
+                'Borrowed By': borrowerNameOf(g.records[0]),
+                Type: g.type === 'student' ? 'Student' : 'Teacher',
+                'Borrow Date': g.records[0]?.borrowDate ? new Date(g.records[0].borrowDate).toLocaleDateString() : '-',
+                'Due Date': g.records[0]?.dueDate ? new Date(g.records[0].dueDate).toLocaleDateString() : '-',
+                'Return Date': g.records[0]?.returnDate ? new Date(g.records[0].returnDate).toLocaleDateString() : '-',
+                Status: g.status === 'borrowed' ? 'Borrowed' : 'Returned'
               })),
               user?.school?.name)}
           />
@@ -164,6 +212,7 @@ export default function Borrowed() {
             <thead>
               <tr className="bg-gradient-to-r from-blue-50 to-indigo-50">
                 <th className="text-left p-4 font-semibold text-blue-700">Book</th>
+                <th className="text-center p-4 font-semibold text-blue-700">Copies</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Borrowed By</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Type</th>
                 <th className="text-left p-4 font-semibold text-blue-700">Borrow Date</th>
@@ -173,41 +222,44 @@ export default function Borrowed() {
               </tr>
             </thead>
             <tbody>
-              {paginated.map((r, idx) => {
-                const k = borrowerKey(r);
+              {paginated.map((g, idx) => {
+                const r0 = g.records[0];
+                const k = borrowerKey(r0);
                 const firstOfBorrower = !seenBorrowers.has(k);
-                seenBorrowers.add(k);
+                if (firstOfBorrower) seenBorrowers.add(k);
                 const activeCount = activeCountByBorrower.get(k) || 0;
+                const isOverdue = g.status === 'borrowed' && r0.dueDate && new Date(r0.dueDate) < endOfToday;
                 return (
-                  <tr key={r._id} className={`border-b border-gray-50 hover:bg-blue-50/30 transition ${idx % 2 ? 'bg-blue-50/20' : 'bg-white'}`}>
-                    <td className="p-4 font-medium text-gray-900">{r.book?.title || 'N/A'}</td>
+                  <tr key={g.key} className={`border-b border-gray-50 hover:bg-blue-50/30 transition ${idx % 2 ? 'bg-blue-50/20' : 'bg-white'}`}>
+                    <td className="p-4 font-medium text-gray-900">{g.book?.title || 'N/A'}</td>
+                    <td className="p-4 text-center">
+                      <span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold">x{g.records.length}</span>
+                    </td>
                     <td className="p-4 text-gray-700">
-                      {r.student?.studentName || r.teacher?.teacherName || 'N/A'}
+                      {borrowerNameOf(r0)}
                       {firstOfBorrower && activeCount > 1 && (
-                        <button onClick={() => handleReturnAll(r)}
+                        <button onClick={() => handleReturnAll(r0)}
                           className="ml-2 inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition text-xs font-medium">
                           <CheckCircle size={12} /> Return All ({activeCount})
                         </button>
                       )}
                     </td>
                     <td className="p-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs ${r.student ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
-                        {r.student ? 'Student' : 'Teacher'}
+                      <span className={`px-2.5 py-1 rounded-full text-xs ${g.type === 'student' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
+                        {g.type === 'student' ? 'Student' : 'Teacher'}
                       </span>
                     </td>
-                    <td className="p-4 text-gray-500">{r.borrowDate ? new Date(r.borrowDate).toLocaleDateString() : '-'}</td>
-                    <td className={`p-4 ${r.status === 'borrowed' && r.dueDate && new Date(r.dueDate) < new Date(new Date().setHours(0,0,0,0)) ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                      {r.dueDate ? new Date(r.dueDate).toLocaleDateString() : '-'}
-                      {r.status === 'borrowed' && r.dueDate && new Date(r.dueDate) < new Date(new Date().setHours(0,0,0,0)) && (
-                        <span className="ml-2 px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-xs font-medium">Overdue</span>
-                      )}
+                    <td className="p-4 text-gray-500">{r0.borrowDate ? new Date(r0.borrowDate).toLocaleDateString() : '-'}</td>
+                    <td className={`p-4 ${isOverdue ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                      {r0.dueDate ? new Date(r0.dueDate).toLocaleDateString() : '-'}
+                      {isOverdue && <span className="ml-2 px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-xs font-medium">Overdue</span>}
                     </td>
-                    <td className="p-4 text-gray-500">{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '-'}</td>
+                    <td className="p-4 text-gray-500">{r0.returnDate ? new Date(r0.returnDate).toLocaleDateString() : '-'}</td>
                     <td className="p-4 text-center">
-                      {r.status === 'borrowed' ? (
-                        <button onClick={() => handleReturn(r._id)}
+                      {g.status === 'borrowed' ? (
+                        <button onClick={() => handleReturnBook(g)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition text-xs font-medium">
-                          <CheckCircle size={14} /> Return
+                          <CheckCircle size={14} /> Return{g.records.length > 1 ? ` x${g.records.length}` : ''}
                         </button>
                       ) : (
                         <span className="inline-flex px-3 py-1.5 bg-gray-100 text-gray-600 rounded-xl text-xs font-medium">Returned</span>
@@ -216,8 +268,8 @@ export default function Borrowed() {
                   </tr>
                 );
               })}
-              {filtered.length === 0 && (
-                <tr><td colSpan={6} className="p-12 text-center text-gray-400">
+              {groups.length === 0 && (
+                <tr><td colSpan={8} className="p-12 text-center text-gray-400">
                   <BookOpen size={40} className="mx-auto mb-3 opacity-30" />
                   <p>No borrowing records found</p>
                 </td></tr>
