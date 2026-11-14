@@ -11,7 +11,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url || '';
+    // Don't force a full page reload for failed login / password-change attempts —
+    // that wiped the error toast. Only redirect when a real session expires.
+    const isAuthAttempt = url.includes('/auth/login') || url.includes('/auth/change-password');
+    if (err.response?.status === 401 && !isAuthAttempt) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
