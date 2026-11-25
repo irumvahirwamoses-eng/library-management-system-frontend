@@ -18,13 +18,10 @@ const borrowerKey = (r) => {
   return `none:${r._id}`;
 };
 
-const borrowerPayload = (r) => {
-  if (r.student?._id) return { student: r.student._id };
-  if (r.teacher?._id) return { teacher: r.teacher._id };
-  return null;
-};
+const borrowerNameOf = (r) => r.student?.studentName || r.teacher?.teacherName || 'Unknown borrower (record missing)';
 
-const borrowerNameOf = (r) => r.student?.studentName || r.teacher?.teacherName || 'N/A';
+const bookTitleKey = (r) => (r.book?.title || '').trim().replace(/\s+/g, ' ').toLowerCase();
+const bookTitleOf = (r) => r.book?.title?.trim() || 'Unknown book';
 
 export default function Borrowed() {
   const { user } = useAuth();
@@ -46,17 +43,6 @@ export default function Borrowed() {
 
   useEffect(() => { load(); }, []);
 
-  const activeCountByBorrower = useMemo(() => {
-    const m = new Map();
-    for (const r of records) {
-      if (r.status === 'borrowed') {
-        const k = borrowerKey(r);
-        m.set(k, (m.get(k) || 0) + 1);
-      }
-    }
-    return m;
-  }, [records]);
-
   const filtered = useMemo(() => records.filter((r) => {
     if (search) {
       const q = search.toLowerCase();
@@ -71,12 +57,13 @@ export default function Borrowed() {
     return true;
   }), [records, search, typeFilter, statusFilter]);
 
-  // Group identical book + borrower + status into a single row (fixes duplicate rows).
+  // One row per borrower, book title and status: 2 Mathematics + 4 Physics appear
+  // as two separate rows for the same teacher, each with its own copy count.
   const groups = useMemo(() => {
     const map = new Map();
     const out = [];
     for (const r of filtered) {
-      const gk = `${borrowerKey(r)}::${r.status}::${r.book?._id || 'none'}`;
+      const gk = `${borrowerKey(r)}::${r.status}::${bookTitleKey(r)}`;
       let g = map.get(gk);
       if (!g) {
         g = {
@@ -107,41 +94,23 @@ export default function Borrowed() {
   }, []);
 
   const handleReturnBook = async (g) => {
-    const borr = borrowerPayload(g.records[0]);
-    if (!borr || !g.book?._id) {
-      toast.error('Borrower or book record is missing');
-      return;
-    }
     const n = g.records.length;
-    if (!confirm(`Return ${n} ${n === 1 ? 'copy' : 'copies'} of "${g.book.title}"?`)) return;
+    const title = bookTitleOf(g.records[0]);
+    if (!confirm(`Return ${n} ${n === 1 ? 'copy' : 'copies'} of "${title}"?`)) return;
     try {
-      const res = await api.put('/borrowed/return-book', { book: g.book._id, ...borr });
-      toast.success(`${res.data.updated} ${res.data.updated === 1 ? 'copy' : 'copies'} returned`);
+      // A row can contain copies from several catalog entries with the same title.
+      // Return each loan record so every book's available count is updated correctly.
+      const results = await Promise.all(
+        g.records.map((r) => api.put(`/borrowed/${r._id}/return`).then(() => true).catch(() => false))
+      );
+      const updated = results.filter(Boolean).length;
+      if (updated) toast.success(`${updated} ${updated === 1 ? 'copy' : 'copies'} returned`);
+      if (updated < n) toast.error(`${n - updated} ${n - updated === 1 ? 'copy' : 'copies'} could not be returned`);
       load();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to return book(s)');
     }
   };
-
-  const handleReturnAll = async (r) => {
-    const payload = borrowerPayload(r);
-    if (!payload) {
-      toast.error('Borrower record is missing for these books');
-      return;
-    }
-    const name = borrowerNameOf(r);
-    const count = activeCountByBorrower.get(borrowerKey(r)) || 0;
-    if (!confirm(`Return all ${count} borrowed book(s) for ${name}?`)) return;
-    try {
-      const res = await api.put('/borrowed/return-all', payload);
-      toast.success(`${res.data.updated} book(s) returned`);
-      load();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to return books');
-    }
-  };
-
-  const seenBorrowers = new Set();
 
   return (
     <div>
@@ -155,7 +124,7 @@ export default function Borrowed() {
             disabled={groups.length === 0}
             onExcel={() => exportExcel(
               groups.map((g) => ({
-                Book: g.book?.title || 'N/A',
+                Book: bookTitleOf(g.records[0]),
                 Copies: g.records.length,
                 'Borrowed By': borrowerNameOf(g.records[0]),
                 Type: g.type === 'student' ? 'Student' : 'Teacher',
@@ -167,7 +136,7 @@ export default function Borrowed() {
               'Borrowings', 'borrowings')}
             onPrint={() => printTable('Borrow / Return Records', EXCEL_COLUMNS,
               groups.map((g) => ({
-                Book: g.book?.title || 'N/A',
+                Book: bookTitleOf(g.records[0]),
                 Copies: g.records.length,
                 'Borrowed By': borrowerNameOf(g.records[0]),
                 Type: g.type === 'student' ? 'Student' : 'Teacher',
@@ -224,26 +193,14 @@ export default function Borrowed() {
             <tbody>
               {paginated.map((g, idx) => {
                 const r0 = g.records[0];
-                const k = borrowerKey(r0);
-                const firstOfBorrower = !seenBorrowers.has(k);
-                if (firstOfBorrower) seenBorrowers.add(k);
-                const activeCount = activeCountByBorrower.get(k) || 0;
                 const isOverdue = g.status === 'borrowed' && r0.dueDate && new Date(r0.dueDate) < endOfToday;
                 return (
                   <tr key={g.key} className={`border-b border-gray-50 hover:bg-blue-50/30 transition ${idx % 2 ? 'bg-blue-50/20' : 'bg-white'}`}>
-                    <td className="p-4 font-medium text-gray-900">{g.book?.title || 'N/A'}</td>
+                    <td className="p-4 font-medium text-gray-900">{bookTitleOf(r0)}</td>
                     <td className="p-4 text-center">
                       <span className="inline-flex px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-semibold">x{g.records.length}</span>
                     </td>
-                    <td className="p-4 text-gray-700">
-                      {borrowerNameOf(r0)}
-                      {firstOfBorrower && activeCount > 1 && (
-                        <button onClick={() => handleReturnAll(r0)}
-                          className="ml-2 inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition text-xs font-medium">
-                          <CheckCircle size={12} /> Return All ({activeCount})
-                        </button>
-                      )}
-                    </td>
+                    <td className="p-4 text-gray-700">{borrowerNameOf(r0)}</td>
                     <td className="p-4">
                       <span className={`px-2.5 py-1 rounded-full text-xs ${g.type === 'student' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
                         {g.type === 'student' ? 'Student' : 'Teacher'}
